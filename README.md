@@ -1,112 +1,104 @@
 🎬 BookMyShow Analysis – SQL Project
 📌 Project Overview
 
-This project is an SQL-based analysis of BookMyShow-like data, designed to explore insights from movies, users, and bookings. Using structured queries, the project demonstrates data modeling, relational schema design, joins, aggregations, and analytical SQL queries to uncover trends such as most popular movies, user preferences, and revenue generation.
+This project is a SQL-based analysis of BookMyShow data, designed to explore movie details, user bookings, payments, theatres, and more.
+It demonstrates database design, relationships (PK–FK), and analytical queries that extract insights about movies and user engagement.
 
-It serves as a real-life use case for applying SQL concepts in the entertainment domain.
+🗂️ Dataset & Tables
 
-🗂️ Dataset Description
+The project contains 9 tables with proper Primary Key (PK) and Foreign Key (FK) references:
 
-The dataset is structured into multiple tables with primary and foreign key relationships.
+Table Name	Description
+🎥 movies	Stores movie details like title, genre, language, duration, rating, and release date
+👤 users	Stores user details such as name, email, and location
+🎟️ bookings	Stores ticket booking information linked with users and movies
+💳 payments	Handles booking payment details
+🏢 theatres	Theatre information including name, location, and screens
+📅 shows	Show timings mapped to theatres and movies
+💺 seats	Seat details for each show
+🎫 tickets	Ticket details linked with bookings
+⭐ reviews	User reviews and ratings for movies
+🏗️ Database Schema
+erDiagram
+    users ||--o{ bookings : places
+    movies ||--o{ bookings : includes
+    bookings ||--o{ payments : has
+    movies ||--o{ shows : scheduled
+    theatres ||--o{ shows : hosts
+    shows ||--o{ seats : contains
+    seats ||--o{ tickets : booked
+    bookings ||--o{ tickets : generates
+    users ||--o{ reviews : writes
+    movies ||--o{ reviews : receives
 
-Tables:
+⚙️ Features
 
-Users – Stores information about registered users
+✅ Relational Database Design with 9 tables
+✅ Primary Key & Foreign Key constraints
+✅ Data insertion with sample dataset (movies, users, bookings, etc.)
+✅ SQL queries for insights such as:
 
-Movies – Contains details like movie title, genre, language, release date, and ratings
+Top-rated movies 🎞️
 
-Theatres – Theatre details including location and seating capacity
+Most active users 👥
 
-Bookings – Tracks tickets booked by users for specific movies and shows
+Highest-grossing movies 💰
 
-Payments – Payment details for transactions
-
-⚙️ Features & Analysis
-
-📊 Movie Insights: Find highest-rated, most popular, and trending movies
-
-👥 User Insights: Analyze user booking behavior
-
-🎭 Genre & Language Trends: Identify audience preferences
-
-💰 Revenue Analysis: Track earnings from bookings & theatres
-
-📍 Theatre Analysis: Find most crowded theatres and occupancy trends
-
-🛠️ Tech Stack
-
-Database: MySQL / PostgreSQL (can adapt)
-
-Query Language: SQL
-
-Tools: MySQL Workbench / DBeaver / pgAdmin (for execution & visualization)
-
-📂 Project Structure
-BookMyShow-SQL-Analysis/
-│── dataset/            # CSV files for movies, users, theatres, bookings, payments
-│── schema.sql          # Database schema with PK & FK constraints
-│── insert_data.sql     # Insert queries for populating tables
-│── analysis_queries.sql# SQL queries for analysis
-│── results/            # Query results (screenshots/exports)
-│── README.md           # Project documentation
+Theatre-wise show analysis 🏢
 
 🚀 How to Run
 
-Clone this repository:
+Clone this repository
 
-git clone https://github.com/your-username/BookMyShow-SQL-Analysis.git
-cd BookMyShow-SQL-Analysis
-
-
-Import schema and data into your SQL environment:
-
-SOURCE schema.sql;
-SOURCE insert_data.sql;
+git clone https://github.com/your-username/bookmyshow-sql-analysis.git
+cd bookmyshow-sql-analysis
 
 
-Run analysis queries:
+Set up MySQL Database
 
-SOURCE analysis_queries.sql;
+CREATE DATABASE bookmyshow;
+USE bookmyshow;
 
-📈 Sample Queries
 
-🔹 Top 5 highest-rated movies:
+Create Tables
+Run the create_tables.sql script (includes all 9 tables with constraints).
 
-SELECT title, rating 
-FROM Movies 
-ORDER BY rating DESC 
+Insert Data
+Run the insert_data.sql script to load sample data.
+
+Run Queries
+Execute queries from analysis_queries.sql to get insights.
+
+📊 Sample Query & Output
+
+Query: Find top 5 highest-rated movies
+
+SELECT title, genre, rating
+FROM movies
+ORDER BY rating DESC
 LIMIT 5;
 
 
-🔹 Most popular genre by total bookings:
+Output:
 
-SELECT m.genre, COUNT(b.booking_id) AS total_bookings
-FROM Bookings b
-JOIN Movies m ON b.movie_id = m.movie_id
-GROUP BY m.genre
-ORDER BY total_bookings DESC;
+Title	Genre	Rating
+Ready road establish	Romance	8.8
+Day prevent	Comedy	8.3
+While institution	Comedy	8.2
+Important true	Action	8.1
+Night mind	Romance	8.0
+🛠️ Tech Stack
 
-🎯 Learning Outcomes
+Database: MySQL 🐬
 
-Database design with primary & foreign keys
+Language: SQL
 
-Writing complex SQL queries with joins, aggregations, and subqueries
+Visualization (Optional): Power BI / Tableau 📈
 
-Performing real-life business analysis using SQL
+📌 Future Enhancements
 
-Improving data handling and problem-solving skills
+🔹 Add stored procedures & triggers for automation
 
-📌 Future Scope
+🔹 Build a Streamlit dashboard for visual insights
 
-Add Streamlit dashboard for visualization
-
-Integrate with Python (Pandas + SQLAlchemy) for deeper analysis
-
-Include real-time API-based dataset
-
-👨‍💻 Author
-Kavish Nag
-
-Kashish Chelwani
-
-Kunal Jhindal
+🔹 Expand dataset with real-world BookMyShow-like data
