@@ -96,11 +96,17 @@ LIMIT 5;
 Output:
 
 Title	Genre	Rating
+
 Ready road establish	Romance	8.8
+
 Day prevent	Comedy	8.3
+
 While institution	Comedy	8.2
+
 Important true	Action	8.1
+
 Night mind	Romance	8.0
+
 🛠️ Tech Stack
 
 Database: MySQL 🐬
