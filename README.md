@@ -4,7 +4,7 @@
 This project is a SQL-based analysis of BookMyShow data, designed to explore movie details, user bookings, payments, theatres, and more.
 It demonstrates database design, relationships (PK–FK), and analytical queries that extract insights about movies and user engagement.
 
-ppt link:https://yogicshifu.my.canva.site/copy-of-dcdsl-phase-1-pptx
+ppt link:https://yogicshifu.my.canva.site/dcdslppt
 
 🗂️ Dataset & Tables
 
