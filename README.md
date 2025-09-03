@@ -11,17 +11,29 @@ ppt link:https://yogicshifu.my.canva.site/dcdslppt
 The project contains 9 tables with proper Primary Key (PK) and Foreign Key (FK) references:
 
 Table Name	Description
+
 🎥 movies	Stores movie details like title, genre, language, duration, rating, and release date
+
 👤 users	Stores user details such as name, email, and location
+
 🎟️ bookings	Stores ticket booking information linked with users and movies
+
 💳 payments	Handles booking payment details
+
 🏢 theatres	Theatre information including name, location, and screens
+
 📅 shows	Show timings mapped to theatres and movies
+
 💺 seats	Seat details for each show
+
 🎫 tickets	Ticket details linked with bookings
+
 ⭐ reviews	User reviews and ratings for movies
+
 🏗️ Database Schema
-erDiagram
+
+ER Diagram
+    
     users ||--o{ bookings : places
     movies ||--o{ bookings : includes
     bookings ||--o{ payments : has
