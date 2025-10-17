@@ -64,7 +64,7 @@ Theatre-wise show analysis 🏢
 
 Clone this repository
 
-git clone https://github.com/your-username/bookmyshow-sql-analysis.git
+git clone https://github.com/Kavish-Nag/bookmyshow-sql-analysis.git
 cd bookmyshow-sql-analysis
 
 
