@@ -1,0 +1,135 @@
+/* Custom CSS for Amazon/E-commerce Dashboard Look */
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f0f2f5; /* Light grey background */
+    padding-top: 65px; /* Space for fixed header */
+}
+
+/* --- Header (Navigation Bar) --- */
+header {
+    background-color: #232f3e; /* Darker blue/grey, typical Amazon header color */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    color: #ff9900 !important; /* Amazon orange highlight */
+}
+
+.input-group {
+    max-width: 300px;
+}
+
+#search-input {
+    border: 1px solid #ff9900;
+    border-right: none;
+}
+
+#search-button {
+    background-color: #ff9900; /* Amazon orange button */
+    border-color: #ff9900;
+    color: #232f3e;
+}
+
+/* --- Main Layout --- */
+.main-content {
+    margin-top: 20px;
+}
+
+/* --- Filter Sidebar (Amazon Left Column Style) --- */
+.sidebar {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    min-height: 80vh; /* Ensure it looks like a sidebar */
+}
+
+.filter-group label {
+    font-weight: 700;
+    color: #0f1111;
+    margin-bottom: 5px;
+}
+
+#apply-filters-btn {
+    background-color: #ff9900;
+    border-color: #ff9900;
+    color: #111;
+    transition: background-color 0.2s;
+}
+
+#apply-filters-btn:hover {
+    background-color: #e68a00;
+    border-color: #e68a00;
+}
+
+#clear-filters-btn {
+    color: #007185;
+}
+
+/* --- Movie List Area --- */
+.section-title {
+    color: #232f3e;
+}
+
+.sort-btn {
+    background-color: #e3e6e6;
+    border-color: #adb1b8;
+    color: #0f1111;
+    font-size: 0.9rem;
+}
+
+.sort-btn:hover {
+    background-color: #d5d9d9;
+    border-color: #a2a6ac;
+    color: #0f1111;
+}
+
+/* --- Movie Cards --- */
+.movie-card {
+    border: 1px solid #ccc;
+    transition: all 0.2s ease-in-out;
+    border-radius: 6px;
+}
+
+.movie-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-2px);
+    border-color: #ff9900; /* Highlight on hover */
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f1111;
+}
+
+.movie-metadata .badge {
+    font-weight: 400;
+    font-size: 0.85em;
+    padding: 0.3em 0.6em;
+}
+
+.rating-info {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f1111;
+}
+
+.review-count {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: #565959;
+}
+
+.view-details-btn {
+    background-color: #007185; /* Action color */
+    border-color: #007185;
+    color: #fff;
+}
+
+.view-details-btn:hover {
+    background-color: #005a70;
+    border-color: #005a70;
+    color: #fff;
+}
