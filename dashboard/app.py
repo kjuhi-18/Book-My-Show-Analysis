@@ -1,200 +1,198 @@
-import os
-from flask import Flask, render_template, request, jsonify
-import pymysql
-
-# --- Database Configuration (UPDATE THIS!) ---
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'sit123',  # <-- CHANGE THIS TO YOUR ACTUAL PASSWORD
-    'database': 'bookmyshow',
-    'cursorclass': pymysql.cursors.DictCursor
-}
-# --------------------------------------------
+from flask import Flask, render_template, jsonify, request
+import mysql.connector
+import traceback
 
 app = Flask(__name__)
 
+# ---------------------------------------------------
+# Database Connection
+# ---------------------------------------------------
 def get_db_connection():
-    """Establishes a MySQL connection."""
-    try:
-        return pymysql.connect(**DB_CONFIG)
-    except Exception as e:
-        print(f"Database connection error: {e}")
-        return None
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="010824@Symbi",  # change if needed
+        database="bookmyshow"
+    )
 
-def fetch_filter_options():
-    """Fetches unique values for filter categories."""
-    conn = get_db_connection()
-    if not conn: return {}
-    
-    try:
-        with conn.cursor() as cursor:
-            # Fetch distinct genres
-            cursor.execute("SELECT DISTINCT genre FROM Movies ORDER BY genre;")
-            genres = [row['genre'] for row in cursor.fetchall()]
-
-            # Fetch distinct languages
-            cursor.execute("SELECT DISTINCT language FROM Movies ORDER BY language;")
-            languages = [row['language'] for row in cursor.fetchall()]
-            
-            # Fetch distinct theater chains
-            cursor.execute("SELECT DISTINCT name FROM Theaters ORDER BY name;")
-            theaters = [row['name'] for row in cursor.fetchall()]
-            
-            # Fetch distinct cities
-            cursor.execute("SELECT DISTINCT city FROM Theaters ORDER BY city;")
-            cities = [row['city'] for row in cursor.fetchall()]
-
-        return {
-            'genres': genres,
-            'languages': languages,
-            'theaters': theaters,
-            'cities': cities
-        }
-    finally:
-        conn.close()
-
-def fetch_movies(filters, sort_by):
-    """Fetches movies applying filters and sorting."""
-    conn = get_db_connection()
-    if not conn: return []
-
-    # Base query combining Movie, Review (for avg_rating), Schedule, and Theater info
-    query_parts = [
-        """
-        SELECT 
-            m.movie_id,
-            m.title,
-            m.genre,
-            m.language,
-            m.duration,
-            m.rating AS actual_rating,
-            t.name AS theater_name,
-            t.city,
-            t.state,
-            AVG(r.rating) AS avg_user_rating,
-            COUNT(r.review_id) AS total_reviews
-        FROM Movies m
-        JOIN Schedule s ON m.movie_id = s.movie_id
-        JOIN Theaters t ON s.theater_id = t.theater_id
-        LEFT JOIN Reviews r ON m.movie_id = r.movie_id
-        WHERE 1=1
-        """
-    ]
-    
-    params = []
-    
-    # --- Apply Filters (from phase 2.ipynb implied logic) ---
-    if filters.get('genre'):
-        query_parts.append(" AND m.genre = %s")
-        params.append(filters['genre'])
-    
-    if filters.get('language'):
-        query_parts.append(" AND m.language = %s")
-        params.append(filters['language'])
-
-    if filters.get('city'):
-        query_parts.append(" AND t.city = %s")
-        params.append(filters['city'])
-        
-    if filters.get('theater'):
-        query_parts.append(" AND t.name = %s")
-        params.append(filters['theater'])
-        
-    if filters.get('search_term'):
-        query_parts.append(" AND m.title LIKE %s")
-        params.append(f"%{filters['search_term']}%")
-
-    # --- Grouping and Ordering ---
-    query_parts.append(" GROUP BY m.movie_id, m.title, m.genre, m.language, m.duration, m.rating, t.name, t.city, t.state")
-    
-    # --- Apply Sorting (from phase 2.ipynb implied logic) ---
-    if sort_by == 'rating_desc':
-        query_parts.append(" ORDER BY avg_user_rating DESC, total_reviews DESC")
-    elif sort_by == 'rating_asc':
-        query_parts.append(" ORDER BY avg_user_rating ASC, total_reviews ASC")
-    elif sort_by == 'reviews_desc':
-        query_parts.append(" ORDER BY total_reviews DESC, avg_user_rating DESC")
-    elif sort_by == 'title_asc':
-        query_parts.append(" ORDER BY m.title ASC")
-    else:
-        # Default sort
-        query_parts.append(" ORDER BY m.title ASC")
-        
-    final_query = "".join(query_parts)
-    
-    try:
-        with conn.cursor() as cursor:
-            # print(f"Executing query: {final_query} with params {params}") # Debugging
-            cursor.execute(final_query, tuple(params))
-            results = cursor.fetchall()
-
-        # Deduplicate movies by selecting a representative theater/city if needed
-        # Since the query groups by theater/city, we get multiple rows per movie/theater combo. 
-        # For the final output, let's group logically on the backend side to show unique movies with relevant info.
-        
-        # A simple hack to combine multiple theater showings for one movie in one row:
-        movie_map = {}
-        for row in results:
-            movie_id = row['movie_id']
-            if movie_id not in movie_map:
-                movie_map[movie_id] = {
-                    'movie_id': row['movie_id'],
-                    'title': row['title'],
-                    'genre': row['genre'],
-                    'language': row['language'],
-                    'duration': row['duration'],
-                    'avg_user_rating': f"{row['avg_user_rating']:.1f}" if row['avg_user_rating'] is not None else "N/A",
-                    'total_reviews': row['total_reviews'],
-                    'locations': []
-                }
-            
-            location_string = f"{row['theater_name']} ({row['city']}, {row['state']})"
-            if location_string not in movie_map[movie_id]['locations']:
-                movie_map[movie_id]['locations'].append(location_string)
-        
-        # Convert map back to list, ensuring sorting is retained (Python dict iteration preserves insertion order after 3.7)
-        final_list = list(movie_map.values())
-        
-        # Apply secondary sort if necessary (or just stick with the SQL sort from the grouped view)
-        # Since the main display unit is the movie, sorting is mostly fine.
-
-        return final_list
-
-    finally:
-        conn.close()
-
-
-@app.route('/')
-def index():
-    """Renders the main dashboard page with initial filter options."""
-    filter_options = fetch_filter_options()
-    return render_template('index.html', options=filter_options)
-
-@app.route('/api/movies', methods=['POST'])
-def api_movies():
-    """API endpoint to get filtered and sorted movie data."""
-    data = request.json
-    
-    filters = {
-        'genre': data.get('genre'),
-        'language': data.get('language'),
-        'city': data.get('city'),
-        'theater': data.get('theater'),
-        'search_term': data.get('search_term')
+# ---------------------------------------------------
+# Function Metadata (for UI hints)
+# ---------------------------------------------------
+FUNCTION_METADATA = {
+    "getAvailableSeats": {
+        "description": "Returns the number of available seats for a given show ID.",
+        "params": ["show_id"]
+    },
+    "getBookingTotal": {
+        "description": "Returns the total amount paid for a booking.",
+        "params": ["booking_id"]
+    },
+    "getChargerSeatCount": {
+        "description": "Returns number of chargeable seats in a show.",
+        "params": ["show_id"]
+    },
+    "getMovieRating": {
+        "description": "Fetches the rating for a specific movie.",
+        "params": ["movie_id"]
+    },
+    "getMovieRevenue": {
+        "description": "Returns total revenue generated by a movie.",
+        "params": ["movie_id"]
+    },
+    "getPaymentStatus": {
+        "description": "Checks payment status for a booking.",
+        "params": ["payment_id"]
+    },
+    "getTheaterLocation": {
+        "description": "Returns location of a theater.",
+        "params": ["theater_id"]
+    },
+    "getTotalEarningsByTheater": {
+        "description": "Calculates total earnings of a specific theater.",
+        "params": ["theater_id"]
+    },
+    "getUpcomingShows": {
+        "description": "Lists shows scheduled after a given date.",
+        "params": ["date"]
+    },
+    "getUserAge": {
+        "description": "Returns the age of a user.",
+        "params": ["user_id"]
     }
-    
-    sort_by = data.get('sort_by', 'title_asc')
-    
-    movie_list = fetch_movies(filters, sort_by)
-    
-    return jsonify({'movies': movie_list})
+}
+
+# ---------------------------------------------------
+# Homepage (Unified Dashboard)
+# ---------------------------------------------------
+@app.route('/')
+def home():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT DISTINCT genre FROM movies")
+        genres = [row[0] for row in cursor.fetchall()]
+
+        cursor.execute("SELECT DISTINCT language FROM movies")
+        languages = [row[0] for row in cursor.fetchall()]
+
+        cursor.execute("SHOW FUNCTION STATUS WHERE Db = 'bookmyshow'")
+        functions = [row[1] for row in cursor.fetchall()]
+
+        conn.close()
+
+        options = {
+            "genres": genres,
+            "languages": languages,
+            "functions": functions
+        }
+        return render_template("index.html", options=options)
+    except Exception as e:
+        print("❌ Error loading homepage:", e)
+        traceback.print_exc()
+        return "Database connection failed.", 500
+
+
+# ---------------------------------------------------
+# API: Fetch movies
+# ---------------------------------------------------
+@app.route("/api/movies", methods=["POST"])
+def get_movies():
+    try:
+        data = request.json
+        genre = data.get("genre", "")
+        language = data.get("language", "")
+        search = data.get("search", "")
+        sort = data.get("sort", "release_date")
+        page = int(data.get("page", 1))
+        limit = 50
+        offset = (page - 1) * limit
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = "SELECT * FROM movies WHERE 1=1"
+        params = []
+
+        if genre and genre != "All":
+            query += " AND genre = %s"
+            params.append(genre)
+        if language and language != "All":
+            query += " AND language = %s"
+            params.append(language)
+        if search:
+            query += " AND title LIKE %s"
+            params.append(f"%{search}%")
+
+        if sort == "Latest Releases":
+            query += " ORDER BY release_date DESC"
+        elif sort == "Top Rated":
+            query += " ORDER BY rating DESC"
+        else:
+            query += " ORDER BY title ASC"
+
+        query += f" LIMIT {limit} OFFSET {offset}"
+
+        cursor.execute(query, params)
+        movies = cursor.fetchall()
+
+        cursor.execute("SELECT COUNT(*) AS total FROM movies")
+        total = cursor.fetchone()["total"]
+
+        conn.close()
+        return jsonify({"movies": movies, "total": total})
+
+    except Exception as e:
+        print("❌ Error fetching movies:", e)
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------
+# API: Function info for UI hints
+# ---------------------------------------------------
+@app.route('/api/function_info/<func_name>')
+def get_function_info(func_name):
+    info = FUNCTION_METADATA.get(func_name)
+    if info:
+        return jsonify(info)
+    return jsonify({"error": "Function not found"}), 404
+
+
+# ---------------------------------------------------
+# API: Execute MySQL Function
+# ---------------------------------------------------
+@app.route('/api/execute_function', methods=['POST'])
+def execute_function():
+    try:
+        data = request.json
+        func_name = data.get('function')
+        args = data.get('args', [])
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        placeholders = ', '.join(['%s'] * len(args))
+        query = f"SELECT {func_name}({placeholders})" if placeholders else f"SELECT {func_name}()"
+
+        cursor.execute(query, args)
+        result = cursor.fetchone()
+        conn.close()
+
+        return jsonify({"result": result[0] if result else "No result returned"})
+    except Exception as e:
+        print("❌ Error executing MySQL function:", e)
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------
+# Health Check
+# ---------------------------------------------------
+@app.route('/health')
+def health():
+    return "Backend is running successfully! ✅"
+
 
 if __name__ == '__main__':
-    # You must run this command in your terminal/notebook to create the necessary functions:
-    # python -c "import pymysql; con = pymysql.connect(host='localhost', user='root', password='010824@Symbi', database='bookmyshow'); cur = con.cursor(); cur.execute('CREATE FUNCTION getMovieRating(movie_id INT) RETURNS FLOAT DETERMINISTIC BEGIN DECLARE avg_rating FLOAT; SELECT AVG(rating) INTO avg_rating FROM Reviews WHERE Reviews.movie_id = movie_id; RETURN avg_rating; END;'); con.close()"
-    # NOTE: The provided SQL in the notebook relies on MySQL functions like `AVG()`, `COUNT()` 
-    # and implicitly relies on a combined view. The Flask app here uses the raw tables 
-    # to perform the aggregation directly, which is more conventional for a backend.
-    
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
