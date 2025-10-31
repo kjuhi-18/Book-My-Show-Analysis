@@ -1,75 +1,129 @@
-/* Custom CSS for Amazon/E-commerce Dashboard Look */
+/* ==========================================================
+   🎬 BookMyShow Dashboard - Amazon-Inspired UI (Enhanced)
+   ========================================================== */
 
+/* --- Base --- */
 body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #f0f2f5; /* Light grey background */
-    padding-top: 65px; /* Space for fixed header */
+    font-family: 'Poppins', 'Roboto', sans-serif;
+    background: linear-gradient(180deg, #f8f9fb 0%, #eaeef2 100%);
+    margin: 0;
+    padding-top: 65px;
+    color: #0f1111;
 }
 
 /* --- Header (Navigation Bar) --- */
 header {
-    background-color: #232f3e; /* Darker blue/grey, typical Amazon header color */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(90deg, #232f3e, #131921);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .navbar-brand {
     font-weight: 700;
-    color: #ff9900 !important; /* Amazon orange highlight */
+    color: #ff9900 !important;
+    font-size: 1.4rem;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease-in-out;
+}
+
+.navbar-brand:hover {
+    transform: scale(1.05);
 }
 
 .input-group {
-    max-width: 300px;
+    max-width: 350px;
 }
 
 #search-input {
-    border: 1px solid #ff9900;
+    border: 2px solid #ff9900;
     border-right: none;
+    transition: 0.2s;
+}
+
+#search-input:focus {
+    box-shadow: 0 0 5px rgba(255, 153, 0, 0.6);
+    outline: none;
 }
 
 #search-button {
-    background-color: #ff9900; /* Amazon orange button */
-    border-color: #ff9900;
+    background: linear-gradient(45deg, #ffb84d, #ff9900);
+    border: none;
     color: #232f3e;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+#search-button:hover {
+    background: linear-gradient(45deg, #ffa31a, #e68a00);
+    transform: scale(1.05);
+}
+
+.nav-link {
+    color: #ffffff;
+    font-weight: 500;
+    margin-right: 15px;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    color: #ff9900;
+    transform: translateY(-1px);
 }
 
 /* --- Main Layout --- */
 .main-content {
-    margin-top: 20px;
+    margin-top: 25px;
 }
 
-/* --- Filter Sidebar (Amazon Left Column Style) --- */
+/* --- Sidebar --- */
 .sidebar {
     background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-    min-height: 80vh; /* Ensure it looks like a sidebar */
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    min-height: 80vh;
+    transition: all 0.3s ease-in-out;
 }
 
+.sidebar:hover {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+/* --- Filters --- */
 .filter-group label {
     font-weight: 700;
     color: #0f1111;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
 }
 
 #apply-filters-btn {
-    background-color: #ff9900;
-    border-color: #ff9900;
+    background: linear-gradient(45deg, #ffb84d, #ff9900);
+    border: none;
     color: #111;
-    transition: background-color 0.2s;
+    font-weight: 600;
+    transition: all 0.3s ease;
 }
 
 #apply-filters-btn:hover {
-    background-color: #e68a00;
-    border-color: #e68a00;
+    background: linear-gradient(45deg, #ffa31a, #e68a00);
+    transform: translateY(-2px);
 }
 
 #clear-filters-btn {
     color: #007185;
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
 }
 
-/* --- Movie List Area --- */
+/* --- Movie Section --- */
 .section-title {
     color: #232f3e;
+    font-weight: 700;
+    font-size: 1.6rem;
+    margin-bottom: 10px;
+    border-left: 5px solid #ff9900;
+    padding-left: 10px;
 }
 
 .sort-btn {
@@ -77,39 +131,46 @@ header {
     border-color: #adb1b8;
     color: #0f1111;
     font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .sort-btn:hover {
     background-color: #d5d9d9;
-    border-color: #a2a6ac;
-    color: #0f1111;
+    transform: translateY(-1px);
 }
 
 /* --- Movie Cards --- */
 .movie-card {
-    border: 1px solid #ccc;
-    transition: all 0.2s ease-in-out;
-    border-radius: 6px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    transition: all 0.25s ease-in-out;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .movie-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-    transform: translateY(-2px);
-    border-color: #ff9900; /* Highlight on hover */
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+    transform: translateY(-3px);
+    border-color: #ff9900;
 }
 
 .card-title {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 1.2rem;
+    font-weight: 600;
     color: #0f1111;
+    margin-bottom: 8px;
 }
 
 .movie-metadata .badge {
-    font-weight: 400;
-    font-size: 0.85em;
-    padding: 0.3em 0.6em;
+    font-weight: 500;
+    font-size: 0.8em;
+    padding: 0.4em 0.7em;
+    border-radius: 5px;
 }
 
+/* --- Ratings and Buttons --- */
 .rating-info {
     font-size: 1.1rem;
     font-weight: 700;
@@ -123,13 +184,53 @@ header {
 }
 
 .view-details-btn {
-    background-color: #007185; /* Action color */
-    border-color: #007185;
+    background: linear-gradient(45deg, #007185, #0094b6);
+    border: none;
     color: #fff;
+    font-weight: 500;
+    transition: all 0.3s ease;
 }
 
 .view-details-btn:hover {
-    background-color: #005a70;
-    border-color: #005a70;
-    color: #fff;
+    background: linear-gradient(45deg, #005a70, #007185);
+    transform: translateY(-2px);
+}
+
+/* --- Function Dashboard --- */
+.function-dashboard {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+.function-dashboard h3 {
+    font-weight: 700;
+    color: #232f3e;
+}
+
+#executeBtn {
+    background: linear-gradient(45deg, #ffb84d, #ff9900);
+    border: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+#executeBtn:hover {
+    background: linear-gradient(45deg, #ffa31a, #e68a00);
+    transform: translateY(-2px);
+}
+
+#resultBox {
+    transition: 0.4s ease all;
+    font-size: 1.1rem;
+}
+
+/* --- Footer --- */
+footer {
+    text-align: center;
+    color: #555;
+    font-size: 0.9rem;
+    margin-top: 30px;
+    padding: 15px 0;
 }
