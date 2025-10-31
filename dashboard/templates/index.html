@@ -2,269 +2,123 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookMyShow Clone - Movie Analytics Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>🎥 BookMyShow Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
 
-    <header class="navbar navbar-expand-lg navbar-dark fixed-top">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-ticket-alt"></i> **ShowTime** Analytics
-            </a>
-            <div class="d-flex align-items-center">
-                <div class="input-group">
-                    <input type="text" id="search-input" class="form-control" placeholder="Search by Movie Title..." aria-label="Search">
-                    <button class="btn btn-dark" type="button" id="search-button"><i class="fas fa-search"></i></button>
+<body class="bg-light">
+<div class="container py-4">
+    <h1 class="text-center mb-4">🎬 Unified Dashboard</h1>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#movies">🎞️ Movies</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#functions">⚙️ Functions</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- MOVIE TAB -->
+        <div class="tab-pane fade show active" id="movies">
+            <div class="card p-3 shadow-sm mb-3">
+                <div class="row g-2">
+                    <div class="col-md-3"><label>Genre</label>
+                        <select id="genre" class="form-select"><option>All</option>{% for g in options.genres %}<option>{{ g }}</option>{% endfor %}</select>
+                    </div>
+                    <div class="col-md-3"><label>Language</label>
+                        <select id="language" class="form-select"><option>All</option>{% for l in options.languages %}<option>{{ l }}</option>{% endfor %}</select>
+                    </div>
+                    <div class="col-md-3"><label>Search Title</label>
+                        <input id="search" class="form-control" placeholder="Enter movie name...">
+                    </div>
+                    <div class="col-md-2"><label>Sort</label>
+                        <select id="sort" class="form-select"><option>Latest Releases</option><option>Top Rated</option><option>A-Z</option></select>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end"><button id="applyFilters" class="btn btn-primary w-100">Apply</button></div>
                 </div>
+            </div>
+
+            <table class="table table-striped">
+                <thead><tr><th>Title</th><th>Genre</th><th>Language</th><th>Rating</th><th>Release Date</th></tr></thead>
+                <tbody id="movieTable"></tbody>
+            </table>
+
+            <div class="text-center mt-3">
+                <button id="prevPage" class="btn btn-secondary">Prev</button>
+                <span id="pageIndicator" class="mx-2"></span>
+                <button id="nextPage" class="btn btn-secondary">Next</button>
             </div>
         </div>
-    </header>
 
-    <div class="container-fluid main-content">
-        <div class="row">
-            
-            <div class="col-lg-3 sidebar p-3">
-                <h4 class="mb-3">Filter Movies</h4>
-                <div class="filter-group">
-                    <div class="mb-4">
-                        <label for="filter-genre" class="form-label">Genre</label>
-                        <select id="filter-genre" class="form-select filter-select">
-                            <option value="">All Genres</option>
-                            {% for genre in options.genres %}
-                            <option value="{{ genre }}">{{ genre }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+        <!-- FUNCTION TAB -->
+        <div class="tab-pane fade" id="functions">
+            <div class="card p-4 bg-dark text-light shadow">
+                <h3 class="text-center mb-3">⚙️ MySQL Functions Dashboard</h3>
+                <select id="functionSelect" class="form-select mb-3">
+                    <option value="">-- Select Function --</option>
+                    {% for f in options.functions %}
+                        <option value="{{ f }}">{{ f }}</option>
+                    {% endfor %}
+                </select>
 
-                    <div class="mb-4">
-                        <label for="filter-language" class="form-label">Language</label>
-                        <select id="filter-language" class="form-select filter-select">
-                            <option value="">All Languages</option>
-                            {% for lang in options.languages %}
-                            <option value="{{ lang }}">{{ lang }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="filter-city" class="form-label">City</label>
-                        <select id="filter-city" class="form-select filter-select">
-                            <option value="">All Cities</option>
-                            {% for city in options.cities %}
-                            <option value="{{ city }}">{{ city }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="filter-theater" class="form-label">Theater Chain</label>
-                        <select id="filter-theater" class="form-select filter-select">
-                            <option value="">All Theaters</option>
-                            {% for theater in options.theaters %}
-                            <option value="{{ theater }}">{{ theater }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <button id="apply-filters-btn" class="btn btn-primary w-100 mt-2">Apply Filters</button>
-                    <button id="clear-filters-btn" class="btn btn-link w-100 mt-1">Clear Filters</button>
-                </div>
-            </div>
-            
-            <div class="col-lg-9 movie-list-area p-3">
-                
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="section-title">All Movies (Showing: <span id="movie-count">0</span>)</h2>
-                    
-                    <div class="dropdown">
-                        <button class="btn btn-secondary dropdown-toggle sort-btn" type="button" id="sort-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-sort-amount-down"></i> Sort By
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="sort-dropdown" id="sort-options">
-                            <li><a class="dropdown-item active" href="#" data-sort="title_asc">Title (A-Z)</a></li>
-                            <li><a class="dropdown-item" href="#" data-sort="rating_desc">Avg. Rating (High to Low)</a></li>
-                            <li><a class="dropdown-item" href="#" data-sort="rating_asc">Avg. Rating (Low to High)</a></li>
-                            <li><a class="dropdown-item" href="#" data-sort="reviews_desc">Total Reviews (High to Low)</a></li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div id="movie-list" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                    <div id="loading-spinner" class="col-12 text-center my-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2">Fetching Movie Data...</p>
-                    </div>
-                </div>
+                <div id="functionDescription" class="mb-3 small text-warning"></div>
+                <div id="paramInputs" class="mb-3"></div>
+                <button id="executeBtn" class="btn btn-primary w-100">🚀 Execute Function</button>
+                <div id="resultBox" class="alert mt-4 text-center fw-bold" style="display:none;"></div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let currentPage = 1;
 
-    <script>
-        let currentSort = 'title_asc'; // Default sort
+// --- Movie Section ---
+async function fetchMovies() {
+  const filters = {
+    genre: genre.value, language: language.value,
+    search: search.value, sort: sort.value, page: currentPage
+  };
+  const res = await fetch("/api/movies", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(filters)});
+  const data = await res.json();
+  const table = document.getElementById("movieTable");
+  table.innerHTML = data.movies.map(m => `<tr>
+    <td>${m.title}</td><td>${m.genre}</td><td>${m.language}</td><td>${m.rating}</td><td>${m.release_date}</td></tr>`).join("");
+  pageIndicator.textContent = `Page ${currentPage}`;
+}
+applyFilters.onclick = ()=>{currentPage=1;fetchMovies();};
+prevPage.onclick = ()=>{if(currentPage>1){currentPage--;fetchMovies();}};
+nextPage.onclick = ()=>{currentPage++;fetchMovies();};
+fetchMovies();
 
-        function buildMovieCard(movie) {
-            // Prepare the locations string for display on the card (limited to 3)
-            const locations = movie.locations.slice(0, 3).join(', ') + (movie.locations.length > 3 ? '...' : '');
+// --- Functions Section ---
+async function loadFunctionInfo(funcName) {
+  if (!funcName) return;
+  const res = await fetch(`/api/function_info/${funcName}`);
+  const info = await res.json();
+  const descDiv = document.getElementById("functionDescription");
+  const inputDiv = document.getElementById("paramInputs");
+  descDiv.innerHTML = info.error ? `<span class='text-danger'>${info.error}</span>` :
+    `<strong>Description:</strong> ${info.description}<br><strong>Parameters:</strong> ${info.params.length ? info.params.join(", ") : "None"}`;
+  inputDiv.innerHTML = info.params.map(p=>`<input class='form-control mb-2' id='param_${p}' placeholder='Enter ${p} here'>`).join("");
+}
 
-            // Store ALL locations in a data attribute for the button to use, joined by a unique separator
-            const allLocations = movie.locations.join('; ');
+functionSelect.onchange = e => loadFunctionInfo(e.target.value);
 
-            return `
-                <div class="col">
-                    <div class="card movie-card h-100 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title">${movie.title}</h5>
-                            <p class="movie-metadata"><span class="badge bg-secondary">${movie.genre}</span> <span class="badge bg-info text-dark">${movie.language}</span></p>
-                            
-                            <div class="rating-info mb-2">
-                                <i class="fas fa-star text-warning"></i> 
-                                <span class="avg-rating">${movie.avg_user_rating}</span> 
-                                <span class="review-count">(${movie.total_reviews} Reviews)</span>
-                            </div>
-
-                            <p class="card-text text-muted">
-                                <i class="fas fa-clock"></i> ${movie.duration} mins
-                            </p>
-                            <p class="card-text">
-                                <i class="fas fa-map-marker-alt"></i> Available in: <span title="${movie.locations.join(', ')}">**${locations}**</span>
-                            </p>
-                            <button class="btn btn-sm btn-outline-primary mt-2 view-details-btn" 
-                                    data-movie-title="${movie.title}"
-                                    data-locations="${allLocations}">
-                                View Showtimes
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function fetchMovies() {
-            $('#movie-list').html('<div id="loading-spinner" class="col-12 text-center my-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Fetching Movie Data...</p></div>');
-            
-            const filters = {
-                genre: $('#filter-genre').val(),
-                language: $('#filter-language').val(),
-                city: $('#filter-city').val(),
-                theater: $('#filter-theater').val(),
-                search_term: $('#search-input').val()
-            };
-            
-            $.ajax({
-                url: '/api/movies',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ 
-                    filters: filters, 
-                    sort_by: currentSort,
-                    genre: filters.genre, 
-                    language: filters.language,
-                    city: filters.city,
-                    theater: filters.theater,
-                    search_term: filters.search_term
-                }),
-                success: function(response) {
-                    $('#movie-list').empty();
-                    const movies = response.movies;
-                    
-                    if (movies.length === 0) {
-                         $('#movie-list').html('<div class="col-12 text-center mt-5"><i class="fas fa-exclamation-circle fa-3x text-secondary mb-3"></i><h4>No Movies Found</h4><p>Try clearing your filters or search terms.</p></div>');
-                    } else {
-                        movies.forEach(movie => {
-                            $('#movie-list').append(buildMovieCard(movie));
-                        });
-                        
-                        // IMPORTANT: The event handler for showtimes is attached once the cards are added
-                        // using event delegation, so no need to explicitly call an attach function here.
-                    }
-                    $('#movie-count').text(movies.length);
-                },
-                error: function(error) {
-                    console.error("Error fetching movies:", error);
-                    $('#movie-list').html('<div class="col-12 text-center mt-5"><i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i><h4>Error Connecting to Database</h4><p>Please check the MySQL credentials and database status in app.py.</p></div>');
-                }
-            });
-        }
-
-        // --- Event Delegation for Showtime Button Fix ---
-        // Attaches a single click handler to the static '#movie-list' area.
-        // It listens for clicks ONLY on elements matching '.view-details-btn'.
-        $('#movie-list').on('click', '.view-details-btn', function() {
-            const title = $(this).data('movie-title');
-            const locationsString = $(this).data('locations');
-            
-            // Split the locations string back into an array for formatting
-            const locationsArray = locationsString.split('; ').filter(l => l); 
-            
-            let alertMessage = `Showtimes for **${title}**:\n\n`;
-            
-            if (locationsArray.length > 0) {
-                // Format the locations nicely in the alert box
-                alertMessage = `Available Showtimes and Locations for ${title}:\n\n- ${locationsArray.join('\n- ')}`;
-            } else {
-                alertMessage = `No specific showtimes found for ${title} with the current filters.`;
-            }
-
-            // Display the locations using a simple alert
-            alert(alertMessage);
-        });
-
-
-        // --- Other Event Handlers ---
-
-        // 1. Filter Button Click
-        $('#apply-filters-btn').on('click', function() {
-            fetchMovies();
-        });
-        
-        // 2. Clear Filters Button Click
-        $('#clear-filters-btn').on('click', function() {
-            $('.filter-select').val('');
-            $('#search-input').val('');
-            fetchMovies();
-        });
-
-        // 3. Search Button Click
-        $('#search-button').on('click', function() {
-            fetchMovies();
-        });
-
-        // 4. Sort Button Click (Amazon-style sorting)
-        $('#sort-options a').on('click', function(e) {
-            e.preventDefault();
-            const newSort = $(this).data('sort');
-            
-            // Update active state and sort variable
-            $('#sort-options a').removeClass('active');
-            $(this).addClass('active');
-            currentSort = newSort;
-            
-            // Update the display text of the sort button
-            const sortText = $(this).text();
-            $('#sort-dropdown').html(`<i class="fas fa-sort-amount-down"></i> Sort By: ${sortText}`);
-            
-            fetchMovies();
-        });
-
-        // Initial fetch on page load
-        $(document).ready(function() {
-            fetchMovies();
-            
-             // Set initial sort button text to match the default active option
-            const defaultSortText = $('#sort-options a.active').text();
-            $('#sort-dropdown').html(`<i class="fas fa-sort-amount-down"></i> Sort By: ${defaultSortText}`);
-        });
-
-    </script>
+executeBtn.onclick = async ()=>{
+  const funcName = functionSelect.value;
+  if(!funcName) return;
+  const res = await fetch(`/api/function_info/${funcName}`);
+  const info = await res.json();
+  const args = info.params.map(p=>document.getElementById(`param_${p}`).value);
+  resultBox.style.display='block';
+  resultBox.className='alert alert-info';
+  resultBox.textContent='⏳ Executing...';
+  const response = await fetch('/api/execute_function',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({function:funcName,args})});
+  const data = await response.json();
+  if(data.result!==undefined){resultBox.className='alert alert-success';resultBox.textContent=`✅ Result: ${data.result}`;}
+  else{resultBox.className='alert alert-danger';resultBox.textContent=`❌ ${data.error}`;}
+};
+</script>
 </body>
 </html>
