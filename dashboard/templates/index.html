@@ -8,14 +8,14 @@
 
 <body class="bg-light">
 <div class="container py-4">
-  <h1 class="text-center mb-4">🎬 Unified Dashboard</h1>
+  <h1 class="text-center mb-4">🎬 Unified BookMyShow Dashboard</h1>
 
-  <!-- Tabs (Views Tab Added) -->
+  <!-- Tabs -->
   <ul class="nav nav-tabs mb-3">
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#movies">🎞️ Movies</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#functions">⚙️ Functions</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#procedures">🧠 Procedures</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#views">📊 Views</button></li> <!-- New Tab -->
+    
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#views">📊 Views</button></li>
   </ul>
 
   <div class="tab-content">
@@ -73,7 +73,7 @@
     <!-- PROCEDURES TAB -->
     <div class="tab-pane fade" id="procedures">
       <div class="card p-4 bg-secondary text-light shadow">
-        <h3 class="text-center mb-3">🧠 MySQL Procedures Dashboard</h3>
+        <h3 class="text-center mb-3">🧠 MySQL Procedures Dashboard (5 Custom Reports)</h3>
         <select id="procedureSelect" class="form-select mb-3">
           <option value="">-- Select Procedure --</option>
           {% for p in options.procedures %}
@@ -83,11 +83,18 @@
 
         <div id="procedureInputs" class="mb-3"></div>
         <button id="executeProcBtn" class="btn btn-warning w-100 mb-3">⚡ Execute Procedure</button>
-        <div id="procedureResultBox" class="alert text-center fw-bold" style="display:none;"></div>
+        
+        <div id="procedureResultErrorBox" class="alert text-center fw-bold mt-3" style="display:none;"></div>
+        <div id="procedureResultBox" class="mt-4" style="display:none;">
+            <p class="fw-bold text-info">Results:</p>
+            <div class="table-responsive">
+                <table id="procedureResultTable" class="table table-striped table-bordered table-sm table-dark"></table>
+            </div>
+        </div>
       </div>
     </div>
 
-    <!-- VIEWS TAB (NEW) -->
+    <!-- VIEWS TAB -->
     <div class="tab-pane fade" id="views">
       <div class="card p-4 bg-dark text-light shadow">
         <h3 class="text-center mb-3 text-info">📊 MySQL Views Dashboard</h3>
@@ -104,7 +111,6 @@
         <div id="viewResultBox" class="mt-4" style="display:none;">
             <p class="fw-bold text-info">Results:</p>
             <div class="table-responsive">
-                <!-- Use table-dark for better contrast on a dark card -->
                 <table id="viewResultTable" class="table table-striped table-bordered table-sm table-dark"></table>
             </div>
         </div>
@@ -116,6 +122,19 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// --- UTILITY FUNCTION TO RENDER TABLE ---
+function renderTable(containerId, data) {
+    const table = document.getElementById(containerId);
+    if (data.length === 0) {
+        table.innerHTML = '<tbody><tr><td>No results found.</td></tr></tbody>';
+        return;
+    }
+    const headers = Object.keys(data[0]);
+    const headerRow = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
+    const bodyRows = data.map(row => `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`).join('');
+    table.innerHTML = headerRow + `<tbody>${bodyRows}</tbody>`;
+}
+
 // --- MOVIES ---
 let currentPage = 1;
 async function fetchMovies() {
@@ -178,10 +197,9 @@ async function loadProcedureInfo(procName) {
     inputDiv.innerHTML = `<div class='text-danger'>${info.error}</div>`;
     return;
   }
-  // Added a description based on whether params are present or not
   inputDiv.innerHTML = (info.params.length > 0 ?
     `<p class='small text-warning'>Enter values for the following parameters:</p>` :
-    `<p class='small text-warning'>This procedure takes no parameters.</p>`) +
+    `<p class='small text-warning'>This procedure takes no parameters. The query will run immediately.</p>`) +
     info.params.map(p =>
       `<input id='proc_${p.PARAMETER_NAME}' class='form-control mb-2' placeholder='Enter ${p.PARAMETER_NAME} (${p.DATA_TYPE})'>`
     ).join("");
@@ -191,32 +209,43 @@ procedureSelect.onchange = e => loadProcedureInfo(e.target.value);
 executeProcBtn.onclick = async ()=>{
   const procName = procedureSelect.value;
   if(!procName) return;
-  
   const infoRes = await fetch(`/api/procedure_info/${procName}`);
   const info = await infoRes.json();
-  
-  // Collect arguments from dynamically generated inputs
   const args = info.params.map(p=>document.getElementById(`proc_${p.PARAMETER_NAME}`).value);
-  
-  const box = document.getElementById('procedureResultBox');
-  box.style.display='block'; box.className='alert alert-info'; box.textContent='⏳ Executing...';
+  const errorBox = document.getElementById('procedureResultErrorBox');
+  const resultBox = document.getElementById('procedureResultBox');
+  resultBox.style.display = 'none';
+  errorBox.style.display = 'block';
+  errorBox.className = 'alert alert-info'; 
+  errorBox.textContent = '⏳ Executing...';
+
   const response = await fetch('/api/execute_procedure',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({procedure:procName,args})});
   const data = await response.json();
-  
-  if(data.error){box.className='alert alert-danger';box.textContent=`❌ ${data.error}`;}
-  else{box.className='alert alert-success';box.textContent=`✅ Result (Rows Affected/Returned): ${JSON.stringify(data.result)}`;}
+  if(data.error){
+    errorBox.className='alert alert-danger';
+    errorBox.textContent=`❌ ${data.error}`;
+    resultBox.style.display = 'none';
+  } else {
+    const results = data.result;
+    if (results.length > 0) {
+        renderTable('procedureResultTable', results);
+        errorBox.style.display = 'none';
+        resultBox.style.display = 'block';
+    } else {
+        errorBox.className = 'alert alert-success';
+        errorBox.textContent = '✅ Procedure executed successfully. No rows returned.';
+        resultBox.style.display = 'none';
+    }
+  }
 };
 
 
-// --- VIEWS (NEW) ---
+// --- VIEWS ---
 document.getElementById('executeViewBtn').onclick = async () => {
   const viewName = document.getElementById('viewSelect').value;
   if (!viewName) return;
-
   const resultBox = document.getElementById('viewResultBox');
   const errorBox = document.getElementById('viewErrorBox');
-  const resultTable = document.getElementById('viewResultTable');
-
   resultBox.style.display = 'none';
   errorBox.style.display = 'block';
   errorBox.className = 'alert alert-info';
@@ -228,7 +257,6 @@ document.getElementById('executeViewBtn').onclick = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ view: viewName })
     });
-
     const data = await response.json();
 
     if (data.error) {
@@ -237,30 +265,25 @@ document.getElementById('executeViewBtn').onclick = async () => {
       return;
     }
 
-    // Build the table
-    if (data.headers && data.data) {
-      // Create table header
-      const headerRow = `<thead><tr>${data.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
+    const tabularData = data.data.map(row => {
+        const rowObj = {};
+        data.headers.forEach((header, index) => { rowObj[header] = row[index]; });
+        return rowObj;
+    });
 
-      // Create table body
-      const bodyRows = data.data.map(row =>
-        // Safely stringify and escape cell data, handle nulls
-        `<tr>${row.map(cell => `<td>${cell !== null ? cell : ''}</td>`).join('')}</tr>`
-      ).join('');
-
-      resultTable.innerHTML = headerRow + `<tbody>${bodyRows}</tbody>`;
-      errorBox.style.display = 'none';
-      resultBox.style.display = 'block';
-
-      if (data.data.length === 0) {
-        errorBox.style.display = 'block';
-        errorBox.className = 'alert alert-warning';
-        errorBox.textContent = `⚠️ View ${viewName} executed successfully, but returned no rows.`;
-      }
+    if (tabularData.length > 0) {
+        renderTable('viewResultTable', tabularData);
+        errorBox.style.display = 'none';
+        resultBox.style.display = 'block';
+    } else {
+      errorBox.className = 'alert alert-warning';
+      errorBox.textContent = `⚠️ View ${viewName} executed successfully but returned no rows.`;
+      resultBox.style.display = 'none';
     }
+
   } catch (e) {
     errorBox.className = 'alert alert-danger';
-    errorBox.textContent = `❌ A network error occurred: ${e.message}`;
+    errorBox.textContent = `❌ Network error: ${e.message}`;
     resultBox.style.display = 'none';
   }
 };

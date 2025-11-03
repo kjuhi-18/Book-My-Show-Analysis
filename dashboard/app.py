@@ -27,10 +27,6 @@ FUNCTION_METADATA = {
         "description": "Returns the total amount paid for a booking.",
         "params": ["booking_id"]
     },
-    "getChargerSeatCount": {
-        "description": "Returns number of chargeable seats in a show.",
-        "params": ["show_id"]
-    },
     "getMovieRating": {
         "description": "Fetches the rating for a specific movie.",
         "params": ["movie_id"]
@@ -41,7 +37,7 @@ FUNCTION_METADATA = {
     },
     "getPaymentStatus": {
         "description": "Checks payment status for a booking.",
-        "params": ["payment_id"]
+        "params": ["booking_id"]
     },
     "getTheaterLocation": {
         "description": "Returns location of a theater.",
@@ -53,12 +49,19 @@ FUNCTION_METADATA = {
     },
     "getUpcomingShows": {
         "description": "Lists shows scheduled after a given date.",
-        "params": ["date"]
+        "params": ["theater_id"]
     },
-    "getUserAge": {
-        "description": "Returns the age of a user.",
-        "params": ["user_id"]
-    }
+}
+
+# ---------------------------------------------------
+# Procedure Metadata (New)
+# ---------------------------------------------------
+PROCEDURE_METADATA = {
+    "Get_Upcoming_Shows_By_Movie": "Fetches all upcoming shows for a specific movie.",
+    "Get_Booking_Details_By_User": "Shows complete booking history for a user.",
+    "Get_Revenue_By_Theater": "Summarizes total revenue generated per theater.",
+    "Get_Show_Occupancy": "Displays occupancy percentage for each show.",
+    "Get_Monthly_Revenue_Report": "Generates current year's monthly revenue report."
 }
 
 # ---------------------------------------------------
@@ -82,8 +85,6 @@ def home():
         cursor.execute("SHOW PROCEDURE STATUS WHERE Db = 'bookmyshow'")
         procedures = [row[1] for row in cursor.fetchall()]
 
-        # New: Fetch Views from the database for the new tab
-        # Fetches all tables marked as 'VIEW' in the current schema
         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'bookmyshow' AND table_type = 'VIEW' ORDER BY table_name")
         views = [row[0] for row in cursor.fetchall()]
 
@@ -94,7 +95,7 @@ def home():
             "languages": languages,
             "functions": functions,
             "procedures": procedures,
-            "views": views  # Added views
+            "views": views
         }
         return render_template("index.html", options=options)
     except Exception as e:
@@ -145,12 +146,6 @@ def get_movies():
 
         cursor.execute(query, params)
         movies = cursor.fetchall()
-
-        # NOTE: This count query needs to match the filters above for accuracy, but leaving simple for now.
-        # count_query = "SELECT COUNT(*) AS total FROM movies WHERE 1=1" # ... add filter logic here if needed
-        # cursor.execute(count_query, count_params)
-        # total = cursor.fetchone()["total"]
-
         conn.close()
         return jsonify({"movies": movies, "total": len(movies)})
 
@@ -197,6 +192,7 @@ def execute_function():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+
 # ---------------------------------------------------
 # API: Get Procedure Parameters
 # ---------------------------------------------------
@@ -214,8 +210,9 @@ def get_procedure_info(proc_name):
         params = cursor.fetchall()
         conn.close()
 
+        description = PROCEDURE_METADATA.get(proc_name, f"Parameters for {proc_name}")
+
         if not params:
-            # Check if procedure exists at all (it might exist but have no params)
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SHOW PROCEDURE STATUS WHERE Name = %s AND Db = 'bookmyshow'", (proc_name,))
@@ -223,14 +220,10 @@ def get_procedure_info(proc_name):
             conn.close()
 
             if exists:
-                return jsonify({"params": [], "description": f"Procedure '{proc_name}' exists and takes no parameters."})
-
+                return jsonify({"params": [], "description": description})
             return jsonify({"error": f"Procedure '{proc_name}' not found."}), 404
 
-        return jsonify({
-            "description": f"Parameters for {proc_name}",
-            "params": params
-        })
+        return jsonify({"description": description, "params": params})
     except Exception as e:
         print("❌ Error fetching procedure info:", e)
         return jsonify({"error": str(e)}), 500
@@ -247,14 +240,17 @@ def execute_procedure():
         args = data.get('args', [])
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         placeholders = ', '.join(['%s'] * len(args))
         query = f"CALL {proc_name}({placeholders})" if placeholders else f"CALL {proc_name}()"
-        
+
         cursor.execute(query, args)
         result = cursor.fetchall()
-        conn.close()
 
+        while cursor.nextset():
+            pass
+
+        conn.close()
         return jsonify({"result": result})
     except Exception as e:
         print("❌ Error executing MySQL procedure:", e)
@@ -263,7 +259,7 @@ def execute_procedure():
 
 
 # ---------------------------------------------------
-# API: Execute View (NEW API)
+# API: Execute View
 # ---------------------------------------------------
 @app.route('/api/execute_view', methods=['POST'])
 def execute_view():
@@ -272,19 +268,14 @@ def execute_view():
         view_name = data.get('view')
 
         conn = get_db_connection()
-        cursor = conn.cursor() # Non-dictionary cursor for easy header extraction
-
-        # Execute query against the view
-        query = f"SELECT * FROM `{view_name}`" # Use backticks for view name safety
-
+        cursor = conn.cursor()
+        query = f"SELECT * FROM `{view_name}`"
         cursor.execute(query)
-        data = cursor.fetchall()
 
-        # Get column headers
+        data = cursor.fetchall()
         headers = [i[0] for i in cursor.description]
 
         conn.close()
-
         return jsonify({"headers": headers, "data": data})
     except Exception as e:
         print(f"❌ Error executing View '{view_name}':", e)
