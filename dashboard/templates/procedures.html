@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🧠 MySQL Procedures Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-secondary text-light">
+  <div class="container py-5">
+    <h2 class="text-center mb-4">🧠 MySQL Procedures Dashboard</h2>
+
+    <div class="card bg-dark p-4 shadow">
+      <select id="procedureSelect" class="form-select mb-3"></select>
+      <div id="paramInputs" class="mb-3"></div>
+      <button id="executeBtn" class="btn btn-warning w-100 mb-3">⚡ Execute Procedure</button>
+      <div id="resultBox" class="alert text-center fw-bold" style="display:none;"></div>
+    </div>
+  </div>
+
+  <script>
+    async function loadProcedures() {
+      const res = await fetch('/api/procedures');
+      const data = await res.json();
+      const select = document.getElementById('procedureSelect');
+      select.innerHTML = data.map(p => `<option value="${p}">${p}</option>`).join('');
+      if (data.length) loadProcedureInfo(data[0]);
+    }
+
+    async function loadProcedureInfo(procName) {
+      const res = await fetch(`/api/procedure_info/${procName}`);
+      const info = await res.json();
+      const inputDiv = document.getElementById('paramInputs');
+
+      if (info.error) {
+        inputDiv.innerHTML = `<div class='text-danger'>${info.error}</div>`;
+        return;
+      }
+
+      inputDiv.innerHTML = info.params.map(p =>
+        `<input id='param_${p.PARAMETER_NAME}' class='form-control mb-2' placeholder='Enter ${p.PARAMETER_NAME} (${p.DATA_TYPE})'>`
+      ).join('');
+    }
+
+    async function executeProcedure() {
+      const procName = document.getElementById('procedureSelect').value;
+      const res = await fetch(`/api/procedure_info/${procName}`);
+      const info = await res.json();
+
+      const args = info.params.map(p => document.getElementById(`param_${p.PARAMETER_NAME}`).value);
+      const resultBox = document.getElementById('resultBox');
+      resultBox.style.display = 'block';
+      resultBox.className = 'alert alert-info';
+      resultBox.textContent = '⏳ Executing...';
+
+      const response = await fetch('/api/execute_procedure', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ procedure: procName, args })
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        resultBox.className = 'alert alert-danger';
+        resultBox.textContent = `❌ ${data.error}`;
+      } else {
+        resultBox.className = 'alert alert-success';
+        resultBox.textContent = `✅ Result: ${JSON.stringify(data.result)}`;
+      }
+    }
+
+    document.getElementById('procedureSelect').addEventListener('change', e => loadProcedureInfo(e.target.value));
+    document.getElementById('executeBtn').addEventListener('click', executeProcedure);
+
+    loadProcedures();
+  </script>
+</body>
+</html>

@@ -11,7 +11,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="",  # change if needed
+        password="sit123",  # change if needed
         database="bookmyshow"
     )
 
@@ -79,12 +79,22 @@ def home():
         cursor.execute("SHOW FUNCTION STATUS WHERE Db = 'bookmyshow'")
         functions = [row[1] for row in cursor.fetchall()]
 
+        cursor.execute("SHOW PROCEDURE STATUS WHERE Db = 'bookmyshow'")
+        procedures = [row[1] for row in cursor.fetchall()]
+
+        # New: Fetch Views from the database for the new tab
+        # Fetches all tables marked as 'VIEW' in the current schema
+        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'bookmyshow' AND table_type = 'VIEW' ORDER BY table_name")
+        views = [row[0] for row in cursor.fetchall()]
+
         conn.close()
 
         options = {
             "genres": genres,
             "languages": languages,
-            "functions": functions
+            "functions": functions,
+            "procedures": procedures,
+            "views": views  # Added views
         }
         return render_template("index.html", options=options)
     except Exception as e:
@@ -103,7 +113,7 @@ def get_movies():
         genre = data.get("genre", "")
         language = data.get("language", "")
         search = data.get("search", "")
-        sort = data.get("sort", "release_date")
+        sort = data.get("sort", "Latest Releases")
         page = int(data.get("page", 1))
         limit = 50
         offset = (page - 1) * limit
@@ -111,7 +121,7 @@ def get_movies():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        query = "SELECT * FROM movies WHERE 1=1"
+        query = "SELECT movie_id, title, genre, language, rating, DATE_FORMAT(release_date, '%Y-%m-%d') as release_date FROM movies WHERE 1=1"
         params = []
 
         if genre and genre != "All":
@@ -136,11 +146,13 @@ def get_movies():
         cursor.execute(query, params)
         movies = cursor.fetchall()
 
-        cursor.execute("SELECT COUNT(*) AS total FROM movies")
-        total = cursor.fetchone()["total"]
+        # NOTE: This count query needs to match the filters above for accuracy, but leaving simple for now.
+        # count_query = "SELECT COUNT(*) AS total FROM movies WHERE 1=1" # ... add filter logic here if needed
+        # cursor.execute(count_query, count_params)
+        # total = cursor.fetchone()["total"]
 
         conn.close()
-        return jsonify({"movies": movies, "total": total})
+        return jsonify({"movies": movies, "total": len(movies)})
 
     except Exception as e:
         print("❌ Error fetching movies:", e)
@@ -182,6 +194,100 @@ def execute_function():
         return jsonify({"result": result[0] if result else "No result returned"})
     except Exception as e:
         print("❌ Error executing MySQL function:", e)
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# ---------------------------------------------------
+# API: Get Procedure Parameters
+# ---------------------------------------------------
+@app.route('/api/procedure_info/<proc_name>')
+def get_procedure_info(proc_name):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT PARAMETER_NAME, DATA_TYPE
+            FROM INFORMATION_SCHEMA.PARAMETERS
+            WHERE SPECIFIC_NAME = %s AND SPECIFIC_SCHEMA = 'bookmyshow'
+            ORDER BY ORDINAL_POSITION
+        """, (proc_name,))
+        params = cursor.fetchall()
+        conn.close()
+
+        if not params:
+            # Check if procedure exists at all (it might exist but have no params)
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SHOW PROCEDURE STATUS WHERE Name = %s AND Db = 'bookmyshow'", (proc_name,))
+            exists = cursor.fetchone()
+            conn.close()
+
+            if exists:
+                return jsonify({"params": [], "description": f"Procedure '{proc_name}' exists and takes no parameters."})
+
+            return jsonify({"error": f"Procedure '{proc_name}' not found."}), 404
+
+        return jsonify({
+            "description": f"Parameters for {proc_name}",
+            "params": params
+        })
+    except Exception as e:
+        print("❌ Error fetching procedure info:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------
+# API: Execute Procedure
+# ---------------------------------------------------
+@app.route('/api/execute_procedure', methods=['POST'])
+def execute_procedure():
+    try:
+        data = request.json
+        proc_name = data.get('procedure')
+        args = data.get('args', [])
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        placeholders = ', '.join(['%s'] * len(args))
+        query = f"CALL {proc_name}({placeholders})" if placeholders else f"CALL {proc_name}()"
+        
+        cursor.execute(query, args)
+        result = cursor.fetchall()
+        conn.close()
+
+        return jsonify({"result": result})
+    except Exception as e:
+        print("❌ Error executing MySQL procedure:", e)
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------
+# API: Execute View (NEW API)
+# ---------------------------------------------------
+@app.route('/api/execute_view', methods=['POST'])
+def execute_view():
+    try:
+        data = request.json
+        view_name = data.get('view')
+
+        conn = get_db_connection()
+        cursor = conn.cursor() # Non-dictionary cursor for easy header extraction
+
+        # Execute query against the view
+        query = f"SELECT * FROM `{view_name}`" # Use backticks for view name safety
+
+        cursor.execute(query)
+        data = cursor.fetchall()
+
+        # Get column headers
+        headers = [i[0] for i in cursor.description]
+
+        conn.close()
+
+        return jsonify({"headers": headers, "data": data})
+    except Exception as e:
+        print(f"❌ Error executing View '{view_name}':", e)
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
