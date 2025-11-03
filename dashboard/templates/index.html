@@ -13,14 +13,13 @@
   <!-- Tabs -->
   <ul class="nav nav-tabs mb-3">
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#movies">🎞️ All Movies</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#functions">🔍 Search</button></li>
-    
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#operations">⚙️ Operations</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#views">📊 Insights</button></li>
   </ul>
 
   <div class="tab-content">
 
-    <!-- MOVIES TAB -->
+    <!-- MOVIES TAB (Unchanged) -->
     <div class="tab-pane fade show active" id="movies">
       <div class="card p-3 shadow-sm mb-3">
         <div class="row g-2">
@@ -52,49 +51,36 @@
       </div>
     </div>
 
-    <!-- FUNCTIONS TAB -->
-    <div class="tab-pane fade" id="functions">
+    <!-- UNIFIED OPERATIONS TAB (Functions & Procedures) -->
+    <div class="tab-pane fade" id="operations">
       <div class="card p-4 bg-dark text-light shadow">
-        <h3 class="text-center mb-3">⚙️ Operations</h3>
-        <select id="functionSelect" class="form-select mb-3">
+        <h3 class="text-center mb-3 text-info">⚙️ Database Operations (Functions & Procedures)</h3>
+        <select id="operationSelect" class="form-select mb-3">
           <option value="">-- Select --</option>
-          {% for f in options.functions %}
-            <option value="{{ f }}">{{ f }}</option>
+          {% for op in options.operations %}
+            <option value="{{ op }}">{{ op }}</option>
           {% endfor %}
         </select>
 
-        <div id="functionDescription" class="mb-3 small text-warning"></div>
+        <div id="operationDescription" class="mb-3 small text-warning"></div>
         <div id="paramInputs" class="mb-3"></div>
-        <button id="executeBtn" class="btn btn-primary w-100">🚀 Get Results</button>
-        <div id="resultBox" class="alert mt-4 text-center fw-bold" style="display:none;"></div>
-      </div>
-    </div>
-
-    <!-- PROCEDURES TAB -->
-    <div class="tab-pane fade" id="procedures">
-      <div class="card p-4 bg-secondary text-light shadow">
-        <h3 class="text-center mb-3">🧠 MySQL Procedures Dashboard (5 Custom Reports)</h3>
-        <select id="procedureSelect" class="form-select mb-3">
-          <option value="">-- Select Procedure --</option>
-          {% for p in options.procedures %}
-            <option value="{{ p }}">{{ p }}</option>
-          {% endfor %}
-        </select>
-
-        <div id="procedureInputs" class="mb-3"></div>
-        <button id="executeProcBtn" class="btn btn-warning w-100 mb-3">⚡ Execute Procedure</button>
         
-        <div id="procedureResultErrorBox" class="alert text-center fw-bold mt-3" style="display:none;"></div>
-        <div id="procedureResultBox" class="mt-4" style="display:none;">
+        <button id="executeOpBtn" class="btn btn-primary w-100">🚀 Execute Operation</button>
+
+        <!-- Scalar/Error Output -->
+        <div id="scalarResultBox" class="alert mt-4 text-center fw-bold" style="display:none;"></div>
+        
+        <!-- Tabular Output (For Procedures) -->
+        <div id="tabularResultBox" class="mt-4" style="display:none;">
             <p class="fw-bold text-info">Results:</p>
             <div class="table-responsive">
-                <table id="procedureResultTable" class="table table-striped table-bordered table-sm table-dark"></table>
+                <table id="tabularResultTable" class="table table-striped table-bordered table-sm table-dark"></table>
             </div>
         </div>
       </div>
     </div>
 
-    <!-- VIEWS TAB -->
+    <!-- VIEWS TAB (Tab ID changed from #views to #insights, content retained) -->
     <div class="tab-pane fade" id="views">
       <div class="card p-4 bg-dark text-light shadow">
         <h3 class="text-center mb-3 text-info">📊 Insights Panel</h3>
@@ -125,6 +111,7 @@
 // --- UTILITY FUNCTION TO RENDER TABLE ---
 function renderTable(containerId, data) {
     const table = document.getElementById(containerId);
+    // Use the first row to determine headers
     if (data.length === 0) {
         table.innerHTML = '<tbody><tr><td>No results found.</td></tr></tbody>';
         return;
@@ -135,7 +122,7 @@ function renderTable(containerId, data) {
     table.innerHTML = headerRow + `<tbody>${bodyRows}</tbody>`;
 }
 
-// --- MOVIES ---
+// --- MOVIES (Unchanged) ---
 let currentPage = 1;
 async function fetchMovies() {
   const filters = {
@@ -158,89 +145,93 @@ nextPage.onclick = ()=>{currentPage++;fetchMovies();};
 fetchMovies();
 
 
-// --- FUNCTIONS ---
-async function loadFunctionInfo(funcName) {
-  if (!funcName) return;
-  const res = await fetch(`/api/function_info/${funcName}`);
+// --- UNIFIED OPERATIONS (Functions & Procedures) ---
+let currentOperationType = ''; // To store the type (FUNCTION or PROCEDURE) for execution
+
+async function loadOperationInfo(opName) {
+  if (!opName) return;
+  
+  // Clear previous results
+  document.getElementById('tabularResultBox').style.display = 'none';
+  document.getElementById('scalarResultBox').style.display = 'none';
+
+  const res = await fetch(`/api/operation_info/${opName}`);
   const info = await res.json();
-  const descDiv = document.getElementById("functionDescription");
+  const descDiv = document.getElementById("operationDescription");
   const inputDiv = document.getElementById("paramInputs");
-  descDiv.innerHTML = info.error ? `<span class='text-danger'>${info.error}</span>` :
-    `<strong>Description:</strong> ${info.description}<br><strong>Parameters:</strong> ${info.params.length ? info.params.join(", ") : "None"}`;
-  inputDiv.innerHTML = info.params.map(p=>`<input class='form-control mb-2' id='param_${p}' placeholder='Enter ${p} here'>`).join("");
-}
-functionSelect.onchange = e => loadFunctionInfo(e.target.value);
-
-executeBtn.onclick = async ()=>{
-  const funcName = functionSelect.value;
-  if(!funcName) return;
-  const res = await fetch(`/api/function_info/${funcName}`);
-  const info = await res.json();
-  const args = info.params.map(p=>document.getElementById(`param_${p}`).value);
-  resultBox.style.display='block';
-  resultBox.className='alert alert-info';
-  resultBox.textContent='⏳ Executing...';
-  const response = await fetch('/api/execute_function',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({function:funcName,args})});
-  const data = await response.json();
-  if(data.result!==undefined){resultBox.className='alert alert-success';resultBox.textContent=`✅ Result: ${data.result}`;}
-  else{resultBox.className='alert alert-danger';resultBox.textContent=`❌ ${data.error}`;}
-};
-
-
-// --- PROCEDURES ---
-async function loadProcedureInfo(procName) {
-  if (!procName) return;
-  const res = await fetch(`/api/procedure_info/${procName}`);
-  const info = await res.json();
-  const inputDiv = document.getElementById("procedureInputs");
+  
   if (info.error) {
-    inputDiv.innerHTML = `<div class='text-danger'>${info.error}</div>`;
+    descDiv.innerHTML = `<span class='text-danger'>${info.error}</span>`;
+    inputDiv.innerHTML = "";
+    currentOperationType = '';
     return;
   }
-  inputDiv.innerHTML = (info.params.length > 0 ?
-    `<p class='small text-warning'>Enter values for the following parameters:</p>` :
-    `<p class='small text-warning'>This procedure takes no parameters. The query will run immediately.</p>`) +
-    info.params.map(p =>
-      `<input id='proc_${p.PARAMETER_NAME}' class='form-control mb-2' placeholder='Enter ${p.PARAMETER_NAME} (${p.DATA_TYPE})'>`
-    ).join("");
+  
+  // Store the type
+  currentOperationType = info.type;
+
+  // Display description and type
+  descDiv.innerHTML = `
+    <span class="badge bg-warning text-dark">${info.type}</span>
+    <strong>Description:</strong> ${info.description}<br>
+    <strong>Parameters:</strong> ${info.params.length ? info.params.join(", ") : "None"}
+  `;
+
+  // Generate input fields
+  inputDiv.innerHTML = info.params.map(p => {
+      const typeHint = info.input_types ? ` (${info.input_types[p]})` : '';
+      return `<input class='form-control mb-2' id='param_${p}' placeholder='Enter ${p}${typeHint}'>`;
+  }).join("");
 }
-procedureSelect.onchange = e => loadProcedureInfo(e.target.value);
 
-executeProcBtn.onclick = async ()=>{
-  const procName = procedureSelect.value;
-  if(!procName) return;
-  const infoRes = await fetch(`/api/procedure_info/${procName}`);
+operationSelect.onchange = e => loadOperationInfo(e.target.value);
+
+executeOpBtn.onclick = async ()=>{
+  const opName = operationSelect.value;
+  if(!opName || !currentOperationType) return;
+  
+  // Fetch parameters based on the current selection to build arguments array
+  const infoRes = await fetch(`/api/operation_info/${opName}`);
   const info = await infoRes.json();
-  const args = info.params.map(p=>document.getElementById(`proc_${p.PARAMETER_NAME}`).value);
-  const errorBox = document.getElementById('procedureResultErrorBox');
-  const resultBox = document.getElementById('procedureResultBox');
-  resultBox.style.display = 'none';
-  errorBox.style.display = 'block';
-  errorBox.className = 'alert alert-info'; 
-  errorBox.textContent = '⏳ Executing...';
+  const args = info.params.map(p=>document.getElementById(`param_${p}`).value);
+  
+  const scalarBox = document.getElementById('scalarResultBox');
+  const tabularBox = document.getElementById('tabularResultBox');
+  
+  scalarBox.style.display='block';
+  tabularBox.style.display='none';
+  scalarBox.className='alert alert-info';
+  scalarBox.textContent='⏳ Executing...';
 
-  const response = await fetch('/api/execute_procedure',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({procedure:procName,args})});
+  const response = await fetch('/api/execute_operation',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({operation:opName, type:currentOperationType, args})
+  });
   const data = await response.json();
+  
   if(data.error){
-    errorBox.className='alert alert-danger';
-    errorBox.textContent=`❌ ${data.error}`;
-    resultBox.style.display = 'none';
-  } else {
-    const results = data.result;
-    if (results.length > 0) {
-        renderTable('procedureResultTable', results);
-        errorBox.style.display = 'none';
-        resultBox.style.display = 'block';
+    scalarBox.className='alert alert-danger';
+    scalarBox.textContent=`❌ ${data.error}`;
+  } else if (data.type === 'FUNCTION') {
+    // Handle Function Result (Scalar)
+    scalarBox.className='alert alert-success';
+    scalarBox.textContent=`✅ Result: ${data.result}`;
+  } else if (data.type === 'PROCEDURE') {
+    // Handle Procedure Result (Tabular)
+    if (data.result && data.result.length > 0) {
+        renderTable('tabularResultTable', data.result);
+        scalarBox.style.display = 'none';
+        tabularBox.style.display = 'block';
     } else {
-        errorBox.className = 'alert alert-success';
-        errorBox.textContent = '✅ Procedure executed successfully. No rows returned.';
-        resultBox.style.display = 'none';
+        scalarBox.className = 'alert alert-success';
+        scalarBox.textContent = '✅ Procedure executed successfully. No rows returned.';
     }
   }
 };
 
 
-// --- VIEWS ---
+// --- VIEWS (Unchanged logic) ---
 document.getElementById('executeViewBtn').onclick = async () => {
   const viewName = document.getElementById('viewSelect').value;
   if (!viewName) return;
@@ -265,6 +256,7 @@ document.getElementById('executeViewBtn').onclick = async () => {
       return;
     }
 
+    // Convert array of arrays (from non-dictionary cursor) to array of objects for renderTable
     const tabularData = data.data.map(row => {
         const rowObj = {};
         data.headers.forEach((header, index) => { rowObj[header] = row[index]; });

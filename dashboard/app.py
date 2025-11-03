@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify, request
 import mysql.connector
 import traceback
+from functools import wraps
 
 app = Flask(__name__)
 
@@ -14,6 +15,17 @@ def get_db_connection():
         password="sit123",  # change if needed
         database="bookmyshow"
     )
+
+# Decorator to fetch connection info safely (used internally)
+def with_db_connection(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        conn = get_db_connection()
+        try:
+            return f(conn, *args, **kwargs)
+        finally:
+            conn.close()
+    return decorated_function
 
 # ---------------------------------------------------
 # Function Metadata (for UI hints)
@@ -54,14 +66,15 @@ FUNCTION_METADATA = {
 }
 
 # ---------------------------------------------------
-# Procedure Metadata (New)
+# Procedure Metadata (for UI hints)
 # ---------------------------------------------------
 PROCEDURE_METADATA = {
     "Get_Upcoming_Shows_By_Movie": "Fetches all upcoming shows for a specific movie.",
     "Get_Booking_Details_By_User": "Shows complete booking history for a user.",
     "Get_Revenue_By_Theater": "Summarizes total revenue generated per theater.",
     "Get_Show_Occupancy": "Displays occupancy percentage for each show.",
-    "Get_Monthly_Revenue_Report": "Generates current year's monthly revenue report."
+    "Get_Monthly_Revenue_Report": "Generates current year's monthly revenue report.",
+    "ShowPerformanceSummary": "Calculates the occupancy rate for a specific show ID (uses OUT parameter)." # NEW
 }
 
 # ---------------------------------------------------
@@ -79,11 +92,16 @@ def home():
         cursor.execute("SELECT DISTINCT language FROM movies")
         languages = [row[0] for row in cursor.fetchall()]
 
+        # --- UNIFIED OPERATIONS FETCH ---
+        operations = []
+        # Get Functions
         cursor.execute("SHOW FUNCTION STATUS WHERE Db = 'bookmyshow'")
-        functions = [row[1] for row in cursor.fetchall()]
+        operations.extend([row[1] for row in cursor.fetchall()])
 
+        # Get Procedures
         cursor.execute("SHOW PROCEDURE STATUS WHERE Db = 'bookmyshow'")
-        procedures = [row[1] for row in cursor.fetchall()]
+        operations.extend([row[1] for row in cursor.fetchall()])
+        # --- END UNIFIED OPERATIONS FETCH ---
 
         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'bookmyshow' AND table_type = 'VIEW' ORDER BY table_name")
         views = [row[0] for row in cursor.fetchall()]
@@ -93,8 +111,7 @@ def home():
         options = {
             "genres": genres,
             "languages": languages,
-            "functions": functions,
-            "procedures": procedures,
+            "operations": operations, # Unified list of Functions and Procedures
             "views": views
         }
         return render_template("index.html", options=options)
@@ -105,7 +122,7 @@ def home():
 
 
 # ---------------------------------------------------
-# API: Fetch movies
+# API: Fetch movies (Unchanged)
 # ---------------------------------------------------
 @app.route("/api/movies", methods=["POST"])
 def get_movies():
@@ -156,118 +173,157 @@ def get_movies():
 
 
 # ---------------------------------------------------
-# API: Function info for UI hints
+# API: Unified Operation Info (Function or Procedure)
 # ---------------------------------------------------
-@app.route('/api/function_info/<func_name>')
-def get_function_info(func_name):
-    info = FUNCTION_METADATA.get(func_name)
-    if info:
+@app.route('/api/operation_info/<op_name>')
+def get_operation_info(op_name):
+    """Checks if op_name is a Function or Procedure and returns its metadata, including OUT parameters for procedures."""
+    
+    # 1. Check if it's a known FUNCTION
+    if op_name in FUNCTION_METADATA:
+        info = FUNCTION_METADATA[op_name]
+        info['type'] = 'FUNCTION'
+        # Functions only have IN parameters implicitly
         return jsonify(info)
-    return jsonify({"error": "Function not found"}), 404
-
-
-# ---------------------------------------------------
-# API: Execute MySQL Function
-# ---------------------------------------------------
-@app.route('/api/execute_function', methods=['POST'])
-def execute_function():
-    try:
-        data = request.json
-        func_name = data.get('function')
-        args = data.get('args', [])
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        placeholders = ', '.join(['%s'] * len(args))
-        query = f"SELECT {func_name}({placeholders})" if placeholders else f"SELECT {func_name}()"
-
-        cursor.execute(query, args)
-        result = cursor.fetchone()
-        conn.close()
-
-        return jsonify({"result": result[0] if result else "No result returned"})
-    except Exception as e:
-        print("❌ Error executing MySQL function:", e)
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
-# ---------------------------------------------------
-# API: Get Procedure Parameters
-# ---------------------------------------------------
-@app.route('/api/procedure_info/<proc_name>')
-def get_procedure_info(proc_name):
+    
+    # 2. Check if it's a PROCEDURE
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT PARAMETER_NAME, DATA_TYPE
-            FROM INFORMATION_SCHEMA.PARAMETERS
-            WHERE SPECIFIC_NAME = %s AND SPECIFIC_SCHEMA = 'bookmyshow'
-            ORDER BY ORDINAL_POSITION
-        """, (proc_name,))
-        params = cursor.fetchall()
-        conn.close()
-
-        description = PROCEDURE_METADATA.get(proc_name, f"Parameters for {proc_name}")
-
-        if not params:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SHOW PROCEDURE STATUS WHERE Name = %s AND Db = 'bookmyshow'", (proc_name,))
-            exists = cursor.fetchone()
+        
+        # 2a. Check if procedure exists
+        cursor.execute("SHOW PROCEDURE STATUS WHERE Name = %s AND Db = 'bookmyshow'", (op_name,))
+        exists = cursor.fetchone()
+        
+        if exists:
+            # 2b. Get all parameters for the procedure (IN and OUT)
+            cursor.execute("""
+                SELECT PARAMETER_NAME, DATA_TYPE, PARAMETER_MODE
+                FROM INFORMATION_SCHEMA.PARAMETERS
+                WHERE SPECIFIC_NAME = %s AND SPECIFIC_SCHEMA = 'bookmyshow'
+                ORDER BY ORDINAL_POSITION
+            """, (op_name,))
+            all_params = cursor.fetchall()
             conn.close()
-
-            if exists:
-                return jsonify({"params": [], "description": description})
-            return jsonify({"error": f"Procedure '{proc_name}' not found."}), 404
-
-        return jsonify({"description": description, "params": params})
+            
+            # Separate IN and OUT parameters
+            in_params = [p for p in all_params if p['PARAMETER_MODE'] == 'IN']
+            out_params = [p for p in all_params if p['PARAMETER_MODE'] == 'OUT']
+            
+            description = PROCEDURE_METADATA.get(op_name, f"Custom Report: {op_name}")
+            
+            # UI only needs IN parameter names for input fields
+            in_param_names = [p['PARAMETER_NAME'] for p in in_params]
+            
+            return jsonify({
+                "type": "PROCEDURE",
+                "description": description, 
+                "params": in_param_names, # Only IN params for user input
+                "out_params": [p['PARAMETER_NAME'] for p in out_params], # Used by execute_operation
+                "input_types": {p['PARAMETER_NAME']: p['DATA_TYPE'] for p in in_params}
+            })
+            
+        conn.close()
+        return jsonify({"error": f"Operation '{op_name}' not found."}), 404
+        
     except Exception as e:
-        print("❌ Error fetching procedure info:", e)
+        print("❌ Error fetching operation info:", e)
         return jsonify({"error": str(e)}), 500
 
 
 # ---------------------------------------------------
-# API: Execute Procedure
+# API: Unified Execute Operation (Function or Procedure)
 # ---------------------------------------------------
-@app.route('/api/execute_procedure', methods=['POST'])
-def execute_procedure():
+@app.route('/api/execute_operation', methods=['POST'])
+@with_db_connection
+def execute_operation(conn):
     try:
         data = request.json
-        proc_name = data.get('procedure')
+        op_name = data.get('operation')
+        op_type = data.get('type')
         args = data.get('args', [])
 
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
         placeholders = ', '.join(['%s'] * len(args))
-        query = f"CALL {proc_name}({placeholders})" if placeholders else f"CALL {proc_name}()"
 
-        cursor.execute(query, args)
-        result = cursor.fetchall()
+        if op_type == 'FUNCTION':
+            # Execute as Function: SELECT function_name(...) -> Scalar result
+            cursor = conn.cursor() 
+            query = f"SELECT {op_name}({placeholders})" if placeholders else f"SELECT {op_name}()"
+            cursor.execute(query, args)
+            result = cursor.fetchone()
+            return jsonify({"type": "FUNCTION", "result": result[0] if result else "No result returned"})
 
-        while cursor.nextset():
-            pass
+        elif op_type == 'PROCEDURE':
+            # Get procedure info again to check for OUT params
+            info_res = get_operation_info(op_name)
+            info = info_res.get_json()
+            out_params = info.get('out_params', [])
+            
+            if out_params:
+                # 1. Handle Procedures with OUT parameters (like a Function)
+                
+                # 1a. Prepare placeholders for the CALL statement: IN args + OUT session variables
+                call_args = args
+                out_vars_str = ', '.join([f"@{p}" for p in out_params])
+                
+                in_placeholders = ', '.join(['%s'] * len(args))
+                call_placeholders = (in_placeholders + ', ' if in_placeholders else '') + out_vars_str
+                    
+                call_query = f"CALL {op_name}({call_placeholders})"
 
-        conn.close()
-        return jsonify({"result": result})
+                # 1b. Execute CALL (non-dictionary cursor is sufficient here)
+                cursor = conn.cursor()
+                cursor.execute(call_query, call_args)
+
+                # 1c. Consume any result sets (e.g., if the procedure contains a SELECT before the OUT param is set)
+                # It's vital to call nextset until it returns None.
+                while cursor.nextset():
+                    pass 
+                    
+                # 1d. Execute SELECT to fetch the final OUT variables' values
+                select_out_query = f"SELECT {out_vars_str}"
+                cursor.execute(select_out_query)
+                out_values = cursor.fetchone()
+                
+                # For a single OUT param, return the scalar value
+                if len(out_params) == 1:
+                    return jsonify({"type": "FUNCTION", "result": out_values[0]})
+                else:
+                    # For multiple OUT params, return as a dictionary
+                    result_dict = dict(zip(out_params, out_values))
+                    return jsonify({"type": "FUNCTION", "result": result_dict})
+                
+            else:
+                # 2. Handle Procedures without OUT parameters (Tabular Result)
+                cursor = conn.cursor(dictionary=True) 
+                query = f"CALL {op_name}({placeholders})" if placeholders else f"CALL {op_name}()"
+                cursor.execute(query, args)
+                result = cursor.fetchall()
+
+                while cursor.nextset():
+                    pass
+                    
+                return jsonify({"type": "PROCEDURE", "result": result}) 
+
+        else:
+            return jsonify({"error": "Invalid operation type provided."}), 400
+
     except Exception as e:
-        print("❌ Error executing MySQL procedure:", e)
+        print(f"❌ Error executing MySQL {op_type} '{op_name}':", e)
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
 # ---------------------------------------------------
-# API: Execute View
+# API: Execute View (Unchanged)
 # ---------------------------------------------------
 @app.route('/api/execute_view', methods=['POST'])
-def execute_view():
+@with_db_connection
+def execute_view(conn):
     try:
         data = request.json
         view_name = data.get('view')
 
-        conn = get_db_connection()
         cursor = conn.cursor()
         query = f"SELECT * FROM `{view_name}`"
         cursor.execute(query)
@@ -275,7 +331,6 @@ def execute_view():
         data = cursor.fetchall()
         headers = [i[0] for i in cursor.description]
 
-        conn.close()
         return jsonify({"headers": headers, "data": data})
     except Exception as e:
         print(f"❌ Error executing View '{view_name}':", e)
@@ -284,7 +339,7 @@ def execute_view():
 
 
 # ---------------------------------------------------
-# Health Check
+# Health Check (Unchanged)
 # ---------------------------------------------------
 @app.route('/health')
 def health():
