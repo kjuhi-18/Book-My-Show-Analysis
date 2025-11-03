@@ -55,9 +55,9 @@
     <!-- FUNCTIONS TAB -->
     <div class="tab-pane fade" id="functions">
       <div class="card p-4 bg-dark text-light shadow">
-        <h3 class="text-center mb-3">⚙️ MySQL Functions Dashboard</h3>
+        <h3 class="text-center mb-3">⚙️ Operations</h3>
         <select id="functionSelect" class="form-select mb-3">
-          <option value="">-- Select Function --</option>
+          <option value="">-- Select --</option>
           {% for f in options.functions %}
             <option value="{{ f }}">{{ f }}</option>
           {% endfor %}
@@ -65,7 +65,7 @@
 
         <div id="functionDescription" class="mb-3 small text-warning"></div>
         <div id="paramInputs" class="mb-3"></div>
-        <button id="executeBtn" class="btn btn-primary w-100">🚀 Execute Function</button>
+        <button id="executeBtn" class="btn btn-primary w-100">🚀 Get Results</button>
         <div id="resultBox" class="alert mt-4 text-center fw-bold" style="display:none;"></div>
       </div>
     </div>
@@ -97,14 +97,14 @@
     <!-- VIEWS TAB -->
     <div class="tab-pane fade" id="views">
       <div class="card p-4 bg-dark text-light shadow">
-        <h3 class="text-center mb-3 text-info">📊 MySQL Views Dashboard</h3>
+        <h3 class="text-center mb-3 text-info">📊 Insights Panel</h3>
         <select id="viewSelect" class="form-select mb-3">
-          <option value="">-- Select View --</option>
+          <option value="">-- Select --</option>
           {% for v in options.views %}
             <option value="{{ v }}">{{ v }}</option>
           {% endfor %}
         </select>
-        <button id="executeViewBtn" class="btn btn-info w-100 mb-3">🔍 Query View</button>
+        <button id="executeViewBtn" class="btn btn-info w-100 mb-3">🔍 Get Insights</button>
         
         <div id="viewErrorBox" class="alert mt-4 text-center fw-bold" style="display:none;"></div>
         
