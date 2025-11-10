@@ -1,124 +1,173 @@
-🎬 BookMyShow Analysis – SQL Project
-📌 Project Overview
+# 🎬 BookMyShow Analysis — SQL Project  
 
-This project is a SQL-based analysis of BookMyShow data, designed to explore movie details, user bookings, payments, theatres, and more.
-It demonstrates database design, relationships (PK–FK), and analytical queries that extract insights about movies and user engagement.
+> 🧠 *A structured SQL project that explores movie data, user bookings, theatres, and payments through relational database design and analytical queries.*  
 
-ppt link:https://yogicshifu.my.canva.site/dcdslppt
+---
 
-🗂️ Dataset & Tables
+<p align="center">
+  <img src="https://img.shields.io/badge/MySQL-Database-orange?logo=mysql" />
+  <img src="https://img.shields.io/badge/SQL-Structured_Query_Language-blue?logo=databricks" />
+  <img src="https://img.shields.io/badge/License-MIT-green" />
+  <img src="https://img.shields.io/badge/Data%20Modeling-ERD-red" />
+</p>
 
-The project contains 9 tables with proper Primary Key (PK) and Foreign Key (FK) references:
+---
 
-Table Name	Description
+## 📌 Project Overview  
 
-🎥 movies	Stores movie details like title, genre, language, duration, rating, and release date
+This project is a **SQL-based analysis** of BookMyShow-like data, designed to simulate how online ticketing systems manage and analyze data.  
+It demonstrates:  
+- **Relational database design** with normalized tables  
+- **Primary/Foreign Key relationships**  
+- **Data insertion and queries** for actionable insights  
+- **Real-world analysis** of movies, users, bookings, and revenue  
 
-👤 users	Stores user details such as name, email, and location
 
-🎟️ bookings	Stores ticket booking information linked with users and movies
 
-💳 payments	Handles booking payment details
+---
 
-🏢 theatres	Theatre information including name, location, and screens
+## 🗂️ Dataset & Tables  
 
-📅 shows	Show timings mapped to theatres and movies
+The project uses **9 tables**, each carefully designed with PK–FK relationships to ensure relational integrity.
 
-💺 seats	Seat details for each show
+| Table | Description |
+|-------|--------------|
+| 🎥 **movies** | Stores movie details (title, genre, language, duration, rating, release date) |
+| 👤 **users** | Stores user info such as name, email, location |
+| 🎟️ **bookings** | Ticket booking info linked with users and movies |
+| 💳 **payments** | Payment details associated with each booking |
+| 🏢 **theatres** | Theatre name, location, and number of screens |
+| 📅 **shows** | Show timings mapped to theatres and movies |
+| 💺 **seats** | Seat details and availability per show |
+| 🎫 **tickets** | Ticket details linked with bookings |
+| ⭐ **reviews** | User reviews and ratings for movies |
 
-🎫 tickets	Ticket details linked with bookings
+---
 
-⭐ reviews	User reviews and ratings for movies
+## 🏗️ Database Schema — ER Diagram  
 
-🏗️ Database Schema
+```
+users ||--o{ bookings : places
+movies ||--o{ bookings : includes
+bookings ||--o{ payments : has
+movies ||--o{ shows : scheduled
+theatres ||--o{ shows : hosts
+shows ||--o{ seats : contains
+seats ||--o{ tickets : booked
+bookings ||--o{ tickets : generates
+users ||--o{ reviews : writes
+movies ||--o{ reviews : receives
+```
 
-ER Diagram
-    
-    users ||--o{ bookings : places
-    movies ||--o{ bookings : includes
-    bookings ||--o{ payments : has
-    movies ||--o{ shows : scheduled
-    theatres ||--o{ shows : hosts
-    shows ||--o{ seats : contains
-    seats ||--o{ tickets : booked
-    bookings ||--o{ tickets : generates
-    users ||--o{ reviews : writes
-    movies ||--o{ reviews : receives
+Each relationship reflects a **real-world mapping** between entities in the BookMyShow system.
 
-⚙️ Features
+---
 
-✅ Relational Database Design with 9 tables
-✅ Primary Key & Foreign Key constraints
-✅ Data insertion with sample dataset (movies, users, bookings, etc.)
-✅ SQL queries for insights such as:
+## ⚙️ Features  
 
-Top-rated movies 🎞️
+✅ **Relational Database Design** — with 9 normalized tables  
+✅ **Primary & Foreign Key Constraints** — ensuring referential integrity  
+✅ **Automated Data Insertion** — using Python + SQL scripts  
+✅ **Analytical SQL Queries** — to extract valuable business insights  
+✅ **Reusable Architecture** — can be extended for real-time dashboards  
 
-Most active users 👥
+---
 
-Highest-grossing movies 💰
+## 🧠 Automated Database Creation  
 
-Theatre-wise show analysis 🏢
+📘 **Notebook:** [`making tables and insertion through python`](https://github.com/kjuhi-18/Book-My-Show-Analysis/blob/main/Notebooks/making%20tables%20and%20insertion%20thorugh%20python)  
 
-🚀 How to Run
+This notebook automates the entire database setup using Python and MySQL Connector:  
+- Creates the database `bookmyshow`  
+- Generates all 9 tables with constraints  
+- Inserts sample data automatically  
+- Verifies data with SQL queries  
 
-Clone this repository
+🔧 This eliminates the need for manual SQL entry, ensuring quick setup and reproducibility.  
 
+---
+
+## 🚀 How to Run  
+
+### 1️⃣ Clone the Repository  
+```bash
 git clone https://github.com/Kavish-Nag/bookmyshow-sql-analysis.git
 cd bookmyshow-sql-analysis
+```
 
-
-Set up MySQL Database
-
+### 2️⃣ Setup MySQL Database  
+```sql
 CREATE DATABASE bookmyshow;
 USE bookmyshow;
+```
+
+### 3️⃣ Run the Automation Notebook  
+Open the Jupyter Notebook:  
+[`making tables and insertion through python`](https://github.com/kjuhi-18/Book-My-Show-Analysis/blob/main/Notebooks/making%20tables%20and%20insertion%20thorugh%20python)  
+
+This notebook automatically:  
+- Creates all **9 relational tables** with primary and foreign keys  
+- Inserts the **sample dataset** into each table  
+- Runs basic SQL **queries and verifications** for data integrity  
+
+No manual SQL scripting required — the entire database setup and data insertion are handled seamlessly within the notebook. 🚀  
+
+---
+
+## 🧩 Tech Stack  
+
+| Category | Tools |
+|-----------|--------|
+| **Database** | MySQL 🐬 |
+| **Language** | SQL |
+| **Automation** | Python (MySQL Connector) |
+| **Documentation** | Canva, PowerPoint, Word |
+
+---
+
+## 📈 Insights Generated  
+
+✅ Top 10 highest-rated movies 🎞️  
+✅ Most frequent users 👥  
+✅ Revenue per movie 💰  
+✅ Theatre performance by city 🏙️  
+✅ Payment mode analysis 💳  
+
+---
+
+## 📌 Future Enhancements  
+
+🔹 Add **stored procedures & triggers** for automation  
+🔹 Build a **Streamlit dashboard** for live visualization  
+🔹 Expand dataset with **real-world movie booking data**  
+🔹 Integrate with **Power BI / Tableau** for visual reporting  
+
+---
+
+## 👨‍💻 Contributors  
+
+| Name |
+|------|
+| **Kavish Nag** |
+| **Kunal Jhindal** |
+| **Kashish Chelwani** |
+
+---
+
+## 🪪 License  
+
+Licensed under the **MIT License** — open for academic and personal use.  
+
+---
+
+## 🌟 Support  
+
+⭐ **Star this repo** if you found it useful!  
+💬 Feedback and contributions are always welcome.  
 
 
-Create Tables
-Run the create_tables.sql script (includes all 9 tables with constraints).
+---
 
-Insert Data
-Run the insert_data.sql script to load sample data.
+> 💡 *Data doesn’t just tell stories — it sells tickets too.* 🎫  
 
-Run Queries
-Execute queries from analysis_queries.sql to get insights.
-
-📊 Sample Query & Output
-
-Query: Find top 5 highest-rated movies
-
-SELECT title, genre, rating
-FROM movies
-ORDER BY rating DESC
-LIMIT 5;
-
-
-Output:
-
-Title	Genre	Rating
-
-Ready road establish	Romance	8.8
-
-Day prevent	Comedy	8.3
-
-While institution	Comedy	8.2
-
-Important true	Action	8.1
-
-Night mind	Romance	8.0
-
-🛠️ Tech Stack
-
-Database: MySQL 🐬
-
-Language: SQL
-
-Visualization (Optional): Power BI / Tableau 📈
-
-📌 Future Enhancements
-
-🔹 Add stored procedures & triggers for automation
-
-🔹 Build a Streamlit dashboard for visual insights
-
-🔹 Expand dataset with real-world BookMyShow-like data
+---
